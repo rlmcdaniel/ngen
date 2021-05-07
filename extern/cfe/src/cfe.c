@@ -1,5 +1,6 @@
 #include "../include/cfe.h"
 #include <time.h>
+#include <math.h>
 
 #ifndef WATER_SPECIFIC_WEIGHT
 #define WATER_SPECIFIC_WEIGHT 9810
@@ -451,7 +452,91 @@ else                return(FALSE);
 }
 
 
+//##############################################################
+//########   XINANJIANG RUNOFF PARTITIONING SCHEME   ###########
+//##############################################################
 
+void Xinanjiang_partitioning_scheme(double water_input_depth_m, double field_capacity_m,
+                                    double max_soil_moisture_storage_m, double column_total_soil_water_m,
+                                    double a_inflection_point_parameter, double b_shape_parameter, 
+                                    double x_shape_parameter, double *surface_runoff_depth_m, 
+                                    double *infiltration_depth_m)
+{
+    
+  //------------------------------------------------------------------------
+  //  This module takes the water_input_depth_m and separates it into surface_runoff_depth_m
+  //  and infiltration_depth_m by calculating the saturated area and runoff based on a scheme developed
+  //  for the Xinanjiang model by Jaywardena and Zhou (2000). According to Knoben et al.
+  //  (2019) "the model uses a variable contributing area to simulate runoff.  [It] uses
+  //  a double parabolic curve to simulate tension water capacities within the catchment, 
+  //  instead of the original single parabolic curve" which is also used as the standard 
+  //  VIC fomulation.  This runoff scheme was selected for implementation into NWM v3.0.
+  //  REFERENCES:
+  //  1. Jaywardena, A.W. and M.C. Zhou, 2000. A modified spatial soil moisture storage 
+  //     capacity distribution curve for the Xinanjiang model. Journal of Hydrology 227: 93-113
+  //  2. Knoben, W.J.M. et al., 2019. Supplement of Modular Assessment of Rainfall-Runoff Models
+  //     Toolbox (MMARRMoT) v1.2: an open-source, extendable framework providing implementations
+  //     of 46 conceptual hydrologic models as continuous state-space formulations. Supplement of 
+  //     Geoci. Model Dev. 12: 2463-2480.
+  //-------------------------------------------------------------------------
+  //  Written by RLM May 2021
+  //-------------------------------------------------------------------------
+  // Inputs
+  //
+  //
+  // Outputs
+  //
+  //------------------------------------------------------------------------- 
+  
+  double tension_water_m, free_water_m, max_tenstion_water_m, max_free_water_m, pervious_runoff_m;
+    
+  if(0.0 < water_input_depth_m) {  //could move this if statement outside of both the schaake and xinanjiang subroutines
+    
+    // partition the total soil water in the column between free water and tension water
+    free_water_m = column_total_soil_water_m - field_capacity_m;
+    
+    if(free_water_m > 0) {
+      tension_water_m = field_capacity_m;
+    } else {
+      free_water_m = 0.0;
+      tension_water_m = column_total_soil_water_m;
+    }
+    
+    // estimate the maximum free water and tension water available in the soil column
+    max_free_water_m = max_soil_moisture_storage_m - field_capacity_m;
+    max_tension_water_m = field_capacity_m;
+    
+    // check that the free_water_m and tension_water_m do not exceed the maximum and if so, change to the max value
+    if(max_free_water_m < free_water_m) free_water_m = max_free_water_m;
+    if(max_tension_water_m < tension_water_m) tension_water_m = max_tension_water_m;
+                                      
+    // NOTE: the impervious surface runoff assumptions due to frozen soil used in NWM 3.0 have not been included.
+    // We are assuming an impervious area due to frozen soils equal to 0 (see eq. 309 from Knoben et al).
+    
+    // The total (pervious) runoff is first estimated before partitioning into surface and subsurface components.
+    // See Knoben et al eq 310 for total runoff and eqs 313-315 for partitioning between surface and subsurface
+    // components.
+      
+    // Calculate total estimated pervious runoff. 
+    // NOTE: If the impervious surface runoff due to frozen soils is added,
+    // the pervious_runoff_m equation will need to be adjusted by the fraction of pervious area.
+    if ((tension_water_m/max_tension_water_m) <= (0.5 - a_inflection_point_parameter)) {
+      pervious_runoff_m = water_input_depth_m * (pow((0.5 - a_inflection_point_parameter), 
+                                                     (1 - b_shape_parameter)) *
+                                                 pow((1 - (tension_water_m/max_tension_water_m)),
+                                                     b_shape_parameter));
+                          
+    } else {
+        
+    }
+      
+  } else {
+    *surface_runoff_depth_m = 0.0;
+    *infiltration_depth_m = 0.0;
+  }
+    
+}
+    
 /**************************************************************************/
 /**************************************************************************/
 /**************************************************************************/
