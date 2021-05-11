@@ -128,11 +128,26 @@ extern int run(cfe_model* model) {
     //##################################################
     double soil_reservoir_storage_deficit_m = (model->NWM_soil_params.smcmax * model->NWM_soil_params.D -
                                                model->soil_reservoir.storage_m);
-    double timestep_h = model->time_step_size / 3600.0;
     double infiltration_depth_m;
+
+    // NOTE: ADD runoff_method TO CONFIG FILE AND BMI
+    if(cfe->runoff_method = 1){
+    double timestep_h = model->time_step_size / 3600.0;
+    
     Schaake_partitioning_scheme(timestep_h, model->Schaake_adjusted_magic_constant_by_soil_type,
                                 soil_reservoir_storage_deficit_m, timestep_rainfall_input_m,
                                 model->flux_Schaake_output_runoff_m, &infiltration_depth_m);
+    } else if (runoff_method = 2) {
+    // NOTE: ADD a_inflection_point_parameter, b_shape_parameter, and x_shape_parameter TO CONFIG FILE AND BMI
+      Xinanjiang_partitioning_scheme(timestep_rainfall_input_m, model->soil_reservoir.storage_threshold_primary_m,
+                                     model->soil_reservoir.storage_max_m, model->soil_reservoir.storage_m,
+                                     model->a_inflection_point_parameter, model->b_shape_parameter,
+                                     model->x_shape_parameter, model->flux_Schaake_output_runoff_m, 
+                                     &infiltration_depth_m)
+
+    } else {
+      // ADD ERROR STATEMENT
+    }
 
     // check to make sure that there is storage available in soil to hold the water that does not runoff
     //--------------------------------------------------------------------------------------------------
@@ -475,20 +490,27 @@ void Xinanjiang_partitioning_scheme(double water_input_depth_m, double field_cap
   //  1. Jaywardena, A.W. and M.C. Zhou, 2000. A modified spatial soil moisture storage 
   //     capacity distribution curve for the Xinanjiang model. Journal of Hydrology 227: 93-113
   //  2. Knoben, W.J.M. et al., 2019. Supplement of Modular Assessment of Rainfall-Runoff Models
-  //     Toolbox (MMARRMoT) v1.2: an open-source, extendable framework providing implementations
+  //     Toolbox (MARRMoT) v1.2: an open-source, extendable framework providing implementations
   //     of 46 conceptual hydrologic models as continuous state-space formulations. Supplement of 
-  //     Geoci. Model Dev. 12: 2463-2480.
+  //     Geosci. Model Dev. 12: 2463-2480.
   //-------------------------------------------------------------------------
   //  Written by RLM May 2021
   //-------------------------------------------------------------------------
   // Inputs
-  //
+  //   double  water_input_depth_m           amount of water input to soil surface this time step [m]
+  //   double  field_capacity_m              <DEFINE>
+  //   double  max_soil_moisture_storage_m   <DEFINE>
+  //   double  column_total_soil_water_m     <DEFINE>
+  //   double  a_inflection_point_parameter  <DEFINE>
+  //   double  b_shape_parameter             <DEFINE>
+  //   double  x_shape_parameter             <DEFINE>
   //
   // Outputs
-  //
+  //   double  surface_runoff_depth_m        amount of water partitioned to surface water this time step [m]
+  //   double  infiltration_depth_m          amount of water partitioned as infiltration (soil water input) this time step [m]
   //------------------------------------------------------------------------- 
   
-  double tension_water_m, free_water_m, max_tenstion_water_m, max_free_water_m, pervious_runoff_m;
+  double tension_water_m, free_water_m, max_tension_water_m, max_free_water_m, pervious_runoff_m;
     
   if(0.0 < water_input_depth_m) {  //could move this if statement outside of both the schaake and xinanjiang subroutines
     
@@ -527,14 +549,29 @@ void Xinanjiang_partitioning_scheme(double water_input_depth_m, double field_cap
                                                      b_shape_parameter));
                           
     } else {
-        
+      pervious_runoff_m = water_input_depth_m * (1 - pow((0.5 + a_inflection_point_parameter), 
+                                                         (1 - b_shape_parameter)) * 
+                                                     pow((1 - (tension_water_m/max_tension_water_m)),
+                                                         (b_shape_parameter)));
     }
+    // Separate the surface water from the pervious runoff 
+    // NOTE: If impervious runoff is added to this subroutine, impervious runoff should be added to
+    // the surface_runoff_depth_m.
+    *surface_runoff_depth_m = pervious_runoff_m * (1 - pow((1 - (free_water_m/max_free_water_m)),x_shape_parameter));
+    // The surface runoff depth is bounded by a minimum of 0 and a maximum of the water input depth.
+    // Check that the estimated surface runoff is not less than 0.0 and if so, change the value to 0.0.
+    if(*surface_runoff_depth_m < 0.0) *surface_runoff_depth_m = 0.0;
+    // Check that the estimated surface runoff does not exceed the amount of water input to the soil surface.  If it does,
+    // change the surface water runoff value to the water input depth.
+    if(*surface_runoff_depth_m > water_input_depth_m) *surface_runoff_depth_m = water_input_depth_m;
+    // Separate the infiltration from the total water input depth to the soil surface.
+    *infiltration_depth_m = water_input_depth_m - *surface_runoff_depth_m;    
       
   } else {
     *surface_runoff_depth_m = 0.0;
     *infiltration_depth_m = 0.0;
   }
-    
+  return;
 }
     
 /**************************************************************************/
