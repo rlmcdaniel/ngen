@@ -1,0 +1,34 @@
+{
+    "global": {
+        "formulations": [
+            {
+                "name": "bmi_fortran",
+                "params": {
+                    "model_type_name": "bmi_fortran_sac",
+                    "library_file": "./extern/sac-sma/cmake_build/libsacbmi",
+                    "forcing_file": "",
+                    "init_config": "./data/bmi/fortran/sac-init-HHWM8.namelist.input",
+                    "allow_exceed_end_time": true,
+                    "main_output_variable": "tci",
+                    "variables_names_map": {
+                        "precip": "atmosphere_water__liquid_equivalent_precipitation_rate",
+                        "tair": "land_surface_air__temperature",
+                        "pet": "water_potential_evaporation_flux",
+                        "pet_flux" : "water_potential_evaporation_flux"
+                    },
+                    "uses_forcing_file": false
+                }
+            }
+        ],
+        "forcing": {
+            "file_pattern": "cat-27_2015-12-01 00_00_00_2015-12-30 23_00_00.csv",
+            "path": "./data/forcing/"
+        }
+    },
+    "time": {
+        "start_time": "2015-12-01 12:00:00",
+        "end_time": "2015-12-05 12:00:00",
+        "output_interval": 3600
+    }
+}    
+

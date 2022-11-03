@@ -44,3 +44,9 @@
 	path = extern/sloth
 	url = https://github.com/noaa-owp/SLoTH
 	branch = latest
+[submodule "sac-sma"]
+	path = sac-sma
+	url = https://github.com/NOAA-OWP/sac-sma.git
+[submodule "extern/sac-sma/sac-sma"]
+	path = extern/sac-sma/sac-sma
+	url = https://github.com/NOAA-OWP/sac-sma.git
