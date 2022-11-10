@@ -1,4 +1,6 @@
 var searchData=
 [
-  ['simple_5flumped_5fmodel_5frealization_272',['Simple_Lumped_Model_Realization',['../class_simple___lumped___model___realization.html',1,'']]]
+  ['multilinestringfeature_0',['MultiLineStringFeature',['../classgeojson_1_1_multi_line_string_feature.html',1,'geojson']]],
+  ['multipointfeature_1',['MultiPointFeature',['../classgeojson_1_1_multi_point_feature.html',1,'geojson']]],
+  ['multipolygonfeature_2',['MultiPolygonFeature',['../classgeojson_1_1_multi_polygon_feature.html',1,'geojson']]]
 ];

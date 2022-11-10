@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['request_5ffrom_5fempty_5fnexus_271',['request_from_empty_nexus',['../structrequest__from__empty__nexus.html',1,'']]]
+  ['linestringfeature_0',['LineStringFeature',['../classgeojson_1_1_line_string_feature.html',1,'geojson']]],
+  ['list_1',['List',['../structgeojson_1_1_list.html',1,'geojson']]]
 ];
