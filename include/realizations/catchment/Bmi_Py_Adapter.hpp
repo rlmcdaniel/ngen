@@ -617,7 +617,7 @@ namespace models {
             /** Fully qualified Python type name for backing module. */
             string bmi_type_py_full_name;
             /** A binding to the Python numpy package/module. */
-            py::module_ np;
+            py::object np;
             /** A pointer to a string with the parent package name of the Python type referenced by ``py_bmi_type_ref``. */
             shared_ptr<string> bmi_type_py_module_name;
             /** A pointer to a string with the simple name of the Python type referenced by ``py_bmi_type_ref``. */
@@ -640,7 +640,7 @@ namespace models {
                     separate_package_and_simple_name();
                     vector<string> moduleComponents = {*bmi_type_py_module_name, *bmi_type_py_class_name};
                     // This is a class object for the BMI module Python class
-                    py::module_ bmi_py_class = utils::ngenPy::InterpreterUtil::getPyModule(moduleComponents);
+                    py::object bmi_py_class = utils::ngenPy::InterpreterUtil::getPyModule(moduleComponents);
                     // This is the actual backing model object
                     bmi_model = make_shared<py::object>(bmi_py_class());
                     bmi_model->attr("initialize")(bmi_init_config);

@@ -107,11 +107,19 @@ namespace routing_py_adapter {
 
     private:
 
+
+        /** Handle to the interperter util.
+         * 
+         * Order is important, must be constructed before anything depending on it
+         * and destructed after all dependent members.
+        */
+        std::shared_ptr<utils::ngenPy::InterpreterUtil> interperter;
+
         /** A binding to the Python numpy package/module. */
-        py::module_ np;
+        py::object np;
 
         /** A binding to the t-route module. */
-        py::module_ t_route_module;
+        py::object t_route_module;
         
         /** Path to a t-route yaml configuration file */
         std::string t_route_config_path;

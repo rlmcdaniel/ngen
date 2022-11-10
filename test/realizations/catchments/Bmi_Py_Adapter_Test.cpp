@@ -26,7 +26,8 @@ typedef struct example_scenario {
 } example_scenario;
 
 class Bmi_Py_Adapter_Test : public ::testing::Test {
-
+private:
+    static std::shared_ptr<InterpreterUtil> interperter;
 protected:
 
     static std::shared_ptr<py::object> friend_get_raw_model(Bmi_Py_Adapter *adapter) {
@@ -120,7 +121,8 @@ protected:
     int expected_var_nbytes = 8; //type double
 
 };
-
+//Make sure the interperter is instansiated and lives throught the test class
+std::shared_ptr<InterpreterUtil> Bmi_Py_Adapter_Test::interperter = InterpreterUtil::getInstance();
 py::object Bmi_Py_Adapter_Test::Path = InterpreterUtil::getPyModule(std::vector<std::string> {"pathlib", "Path"});
 
 void Bmi_Py_Adapter_Test::SetUp() {
@@ -648,7 +650,7 @@ TEST_F(Bmi_Py_Adapter_Test, GetEndTime_0_a) {
     size_t ex_index = 0;
 
     examples[ex_index].adapter->Initialize();
-    py::module_ np = py::module_::import("numpy");
+    py::object np = py::module_::import("numpy");
 
 
     double max_float = py::float_(np.attr("finfo")(py::float_(0.0)).attr("max"));

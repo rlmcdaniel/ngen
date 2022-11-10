@@ -30,10 +30,54 @@ namespace utils {
         class InterpreterUtil {
 
         public:
-            static InterpreterUtil &getInstance() {
-                static InterpreterUtil instance;
+            static std::shared_ptr<InterpreterUtil> getInstance() {
+                /**
+                 * @brief Singleton instance of embdedded python interpreter.
+                 * 
+                 * Note that if no client holds a currernt reference to this singleton, it will get destroyed
+                 * and the next call to getInstance will create and initialize a new scoped interpreter
+                 * 
+                 * This is required for the simple reason that a traditional static singleton instance has no guarantee
+                 * about the destrutction order of resources across multiple compliation units,
+                 * and this will cause seg faults if the python interpreter is torn down before the destruction of bound modules
+                 * (such as this class' Path module).  If the interpreter is not available when those destructors are called,
+                 * a seg fault will occur.  With this implementaiton, the interpreter is guarnateed to exist as long as anything 
+                 * referencing it needs it, and then can cleanly clean up internal references before the `py::scoped_interpreter`
+                 * guard is destroyed, removing the python interpreter.
+                 * 
+                 * See the following issues and links for reference:
+                 * 
+                 * https://cplusplus.com/forum/general/37113/
+                 * https://stackoverflow.com/questions/60100922/keeping-python-interpreter-alive-only-during-the-life-of-an-object-instance
+                 * https://github.com/pybind/pybind11/issues/1598
+                 * 
+                 */
+                //Functionally, a global instance variable
+                //This can be made a class attribute, but would need to find a place to put a single definition
+                //e.g. make a .cpp file
+                static std::weak_ptr<InterpreterUtil> _instance;
+                std::shared_ptr<InterpreterUtil> instance = _instance.lock();
+                if(!instance){
+                    //instance is null
+                    InterpreterUtil* pt = new InterpreterUtil();
+                    instance = std::shared_ptr<InterpreterUtil>(pt, Deleter{});
+                    //update the weak ref
+                    _instance = instance;
+                }
                 return instance;
             }
+
+            struct Deleter {
+                /**
+                 * @brief Custom deleter functor to provide access to private destructor of singleton
+                 * 
+                 * In theory, could probably safely move the destructor to public scope as well...
+                 * 
+                 * @param ptr 
+                 */
+                void operator()(InterpreterUtil* ptr){delete ptr;}
+            };
+            friend Deleter;
 
         private:
             InterpreterUtil() {
@@ -65,7 +109,7 @@ namespace utils {
              * @param directoryPath The desired directory to add to the Python system path.
              */
             static void addToPyPath(const std::string &directoryPath) {
-                getInstance().addToPath(directoryPath);
+                getInstance()->addToPath(directoryPath);
             }
 
             /**
@@ -100,8 +144,8 @@ namespace utils {
              * @param name Name of the desired top level module or package.
              * @return Handle to the desired top level Python module.
              */
-            static py::module_ getPyModule(const std::string &name) {
-                return getInstance().getModule(name);
+            static py::object getPyModule(const std::string &name) {
+                return getInstance()->getModule(name);
             }
 
             /**
@@ -118,8 +162,8 @@ namespace utils {
              *                         and (when applicable) submodules.
              * @return Handle to the desired Python module or type.
              */
-            static py::module_ getPyModule(const std::vector<std::string> &moduleLevelNames) {
-                return getInstance().getModule(moduleLevelNames);
+            static py::object getPyModule(const std::vector<std::string> &moduleLevelNames) {
+                return getInstance()->getModule(moduleLevelNames);
             }
 
             /**
@@ -132,7 +176,7 @@ namespace utils {
              * @param name Name of the desired top level module or namespace package.
              * @return Handle to the desired top level Python module.
              */
-            py::module_ getModule(const std::string &name) {
+            py::object getModule(const std::string &name) {
                 if (!isImported(name)) {
                     importTopLevelModule(name);
                 }
@@ -149,9 +193,9 @@ namespace utils {
              *                         and (when applicable) submodules.
              * @return Handle to the desired Python module or type.
              */
-            py::module_ getModule(const std::vector<std::string> &moduleLevelNames) {
+            py::object getModule(const std::vector<std::string> &moduleLevelNames) {
                 // Start with top-level module name, then descend through attributes as needed
-                py::module_ module = getModule(moduleLevelNames[0]);
+                py::object module = getModule(moduleLevelNames[0]);
                 for (size_t i = 1; i < moduleLevelNames.size(); ++i) {
                     module = module.attr(moduleLevelNames[i].c_str());
                 }
@@ -252,12 +296,14 @@ namespace utils {
             }
 
         private:
+            //List this FIRST, to ensure it isn't destroyed before anything else (e.g. Path) that might
+            //need a valid interpreter in its destructor calls.
             // This is required for the Python interpreter and must be kept alive
             std::shared_ptr<py::scoped_interpreter> guardPtr;
 
-            std::map<std::string, py::module_> importedTopLevelModules;
+            std::map<std::string, py::object> importedTopLevelModules;
 
-            py::module_ Path;
+            py::object Path;
 
             /**
              * Import a specified top level module.

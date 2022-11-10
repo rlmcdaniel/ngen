@@ -26,6 +26,8 @@ using namespace utils::ngenPy;
 using namespace realization;
 
 class Bmi_Multi_Formulation_Test : public ::testing::Test {
+private:
+    static std::shared_ptr<InterpreterUtil> interperter;
 protected:
 
     static std::string find_file(std::vector<std::string> dir_opts, const std::string& basename) {
@@ -397,7 +399,7 @@ private:
      */
     static std::string py_find_repo_root() {
         #ifdef ACTIVATE_PYTHON
-        py::module_ Path = InterpreterUtil::getPyModule(std::vector<std::string> {"pathlib", "Path"});
+        py::object Path = InterpreterUtil::getPyModule(std::vector<std::string> {"pathlib", "Path"});
         py::object dir = Path(".").attr("resolve")();
         while (!dir.equal(dir.attr("parent"))) {
             // If there is a child .git dir and a child .github dir, then dir is the root
@@ -445,6 +447,8 @@ private:
 
 
 };
+//Make sure the interperter is instansiated and lives throught the test class
+std::shared_ptr<InterpreterUtil> Bmi_Multi_Formulation_Test::interperter = InterpreterUtil::getInstance();
 
 void Bmi_Multi_Formulation_Test::SetUpTestSuite() {
     #ifdef ACTIVATE_PYTHON
